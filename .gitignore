@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+env/
+.venv/
+
+# Environment Variables
+.env
+
+# Raw Data (Lisans ve boyut kısıtlamalarından dolayı ham verileri locale bırakıyoruz)
+data/raw/*
+!data/raw/.gitkeep
