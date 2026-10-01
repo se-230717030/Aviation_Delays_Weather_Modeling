@@ -52,7 +52,7 @@ aviation-delays-weather/
 
     
 
-## Team
+## Team Information
 * Muhammet Ali Öztürk (230717030) - GitHub: @se-230717030
 * Muhammed Osman Kara (230717031) - GitHub: @se-230717031
 * Oğuzhan Şükrü Keleş (230717016) - GitHub: @se-230717016
