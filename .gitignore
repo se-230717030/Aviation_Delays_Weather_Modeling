@@ -11,3 +11,6 @@ env/
 # Raw Data (Lisans ve boyut kısıtlamalarından dolayı ham verileri locale bırakıyoruz)
 data/raw/*
 !data/raw/.gitkeep
+
+# Database files
+data/*.db
