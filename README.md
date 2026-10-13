@@ -14,7 +14,7 @@ Follow these steps to complete a full data ingestion run from a fresh clone:
 
 ```bash
 # 1. Clone the repository
-git clone [https://github.com/se-230717030/Aviation_Delays_Weather_Modeling](https://github.com/se-230717030/Aviation_Delays_Weather_Modeling)
+git clone https://github.com/se-230717030/Aviation_Delays_Weather_Modeling
 cd Aviation_Delays_Weather_Modeling
 
 # 2. Set up the environment
@@ -171,7 +171,7 @@ Follow these steps to complete a full data ingestion and database build from a f
 
 ```bash
 # 1. Clone the repository
-git clone [https://github.com/se-230717030/Aviation_Delays_Weather_Modeling](https://github.com/se-230717030/Aviation_Delays_Weather_Modeling)
+git clone https://github.com/se-230717030/Aviation_Delays_Weather_Modeling
 cd Aviation_Delays_Weather_Modeling
 
 # 2. Set up the environment
