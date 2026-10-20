@@ -1,0 +1,6 @@
+alias_icao24,kind,canonical_icao24,decided_by,decided_at,note
+4ac887,icao24_bit_error,4bc887,Muhammet Ali Ozturk,2026-10-20,"Both report callsign PGT2RJ (Pegasus); 4ac887 (Sweden prefix) is a 1-bit hex corruption of 4bc887 (Turkey prefix)"
+4b4887,icao24_bit_error,4bc887,Muhammet Ali Ozturk,2026-10-20,"Both report callsign PGT2RJ (Pegasus); 4b4887 (Swiss prefix) is a hex corruption of 4bc887 (Turkey prefix)"
+480ed8,duplicate_callsign,400ed8,Muhammed Osman Kara,2026-10-20,"Both report military callsign CWL24 (RAF Cranwell); 480ed8 was quarantined with null coords while 400ed8 is active UK hex"
+471e5a,re_registered_or_overlapping,471e5e,Oguzhan Sukru Keles,2026-10-20,"Both WizzAir Hungary aircraft report callsign WZZ61GJ seconds apart at ~50.0N 21.0E; mapped to latest active transponder 471e5e"
+461f22,duplicate_callsign,461fa2,Oguzhan Sukru Keles,2026-10-20,"Both Finnair aircraft report callsign FIN84G in the same batch; mapped to canonical active airframe 461fa2"

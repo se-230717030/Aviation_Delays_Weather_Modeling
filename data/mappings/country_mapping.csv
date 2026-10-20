@@ -1,0 +1,9 @@
+raw_country,clean_country,decided_by,decided_at,note
+Côte d'Ivoire,Ivory Coast,Muhammet Ali Ozturk,2026-10-20,"Non-ASCII Unicode character (o-circumflex U+00F4) in OpenSky source; normalised to standard ASCII English name"
+The former Yugoslav Republic of Macedonia,North Macedonia,Muhammet Ali Ozturk,2026-10-20,"Outdated UN provisional name in OpenSky database; mapped to current official name since 2019"
+Kingdom of the Netherlands,Netherlands,Muhammed Osman Kara,2026-10-20,"Standardised formal monarchy title to standard ISO country name for grouping"
+Republic of Korea,South Korea,Muhammed Osman Kara,2026-10-20,"Standardised formal name to common analytical country name"
+United Republic of Tanzania,Tanzania,Oguzhan Sukru Keles,2026-10-20,"Standardised formal name to common analytical country name"
+Islamic Republic of Iran,Iran,Oguzhan Sukru Keles,2026-10-20,"Standardised formal name to common analytical country name"
+Russian Federation,Russia,Muhammet Ali Ozturk,2026-10-20,"Standardised formal name to common analytical country name"
+Syrian Arab Republic,Syria,Muhammed Osman Kara,2026-10-20,"Standardised formal name to common analytical country name"

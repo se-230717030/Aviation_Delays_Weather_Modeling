@@ -13,19 +13,19 @@ DB_PATH = os.path.join(BASE_DIR, "data", "aviation.db")
 SCHEMA_PATH = os.path.join(BASE_DIR, "sql", "schema.sql")
 
 def init_db(con):
-    """Veritabanını baştan oluşturur (Idempotent)[cite: 3]"""
+    """Veritabanını baştan oluşturur (Idempotent)"""
     with open(SCHEMA_PATH, "r", encoding="utf-8") as f:
         schema_sql = f.read()
     con.executescript(schema_sql)
 
 def unix_to_iso8601(unix_timestamp):
-    """Unix timestamp'i ISO 8601 UTC formatına çevirir[cite: 1, 3]"""
+    """Unix timestamp'i ISO 8601 UTC formatına çevirir"""
     if not unix_timestamp:
         return None
     return datetime.fromtimestamp(unix_timestamp, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 def quarantine_record(con, target_table, record_data, reason, retrieved_at, summary):
-    """Hatalı kayıtları çökme olmadan karantinaya yazar[cite: 2, 3]"""
+    """Hatalı kayıtları çökme olmadan karantinaya yazar"""
     con.execute("""
         INSERT OR IGNORE INTO quarantine (target_table, record_data, reason, retrieved_at)
         VALUES (?, ?, ?, ?)
@@ -33,7 +33,7 @@ def quarantine_record(con, target_table, record_data, reason, retrieved_at, summ
     summary["quarantined"] += 1
     
 def load_opensky_data(con, summary):
-    """OpenSky verilerini upsert (deduplication) mantığıyla işler[cite: 3, 4]"""
+    """OpenSky verilerini upsert (deduplication) mantığıyla işler"""
     opensky_dir = os.path.join(BASE_DIR, "data", "raw", "opensky")
     if not os.path.exists(opensky_dir):
         return
@@ -121,7 +121,7 @@ def load_opensky_data(con, summary):
             summary["flight_states_inserted"] += 1
 
 def load_openmeteo_data(con, summary):
-    """Open-Meteo verilerini upsert (deduplication) mantığıyla işler[cite: 3, 4]"""
+    """Open-Meteo verilerini upsert (deduplication) mantığıyla işler"""
     openmeteo_dir = os.path.join(BASE_DIR, "data", "raw", "openmeteo")
     if not os.path.exists(openmeteo_dir):
         return
@@ -169,7 +169,7 @@ def load_openmeteo_data(con, summary):
         precs = hourly.get("precipitation", [])
 
         for i, t in enumerate(times):
-            # Open-Meteo zamanları "2026-10-01T00:00" formatındadır, ISO 8601 UTC için sonuna 'Z' ekliyoruz[cite: 1, 3]
+            # Open-Meteo zamanları "2026-10-01T00:00" formatındadır, ISO 8601 UTC için sonuna 'Z' ekliyoruz
             observed_at = t + "Z" if not t.endswith("Z") else t
             
             temp = temps[i] if i < len(temps) else None
@@ -191,7 +191,7 @@ def load_openmeteo_data(con, summary):
             summary["weather_readings_inserted"] += 1
 
 def run_load():
-    """Çalıştırma ve raporlama mantığını yönetir[cite: 3, 4]"""
+    """Çalıştırma ve raporlama mantığını yönetir"""
     summary = {
         "files_read": 0,
         "new_aircrafts": 0,
@@ -222,7 +222,7 @@ def run_load():
     finally:
         con.close()
 
-    # Dürüst Rapor (Honest Run Summary)[cite: 3, 4]
+    # Dürüst Rapor (Honest Run Summary)
     print(f"files read: \t\t{summary['files_read']} raw files")
     print(f"aircrafts: \t\t{summary['new_aircrafts']} new this run")
     print(f"locations: \t\t{summary['new_locations']} new this run")
