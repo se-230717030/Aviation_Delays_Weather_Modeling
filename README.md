@@ -58,7 +58,6 @@ aviation-delays-weather/
 * Oğuzhan Şükrü Keleş (230717016) - GitHub: @se-230717016
 
 
-
 ## Entity-Relationship (ER) Diagram
 
 The diagram below shows the database schema created during the M2 phase of our project:
