@@ -196,3 +196,18 @@ python src/load.py
 python src/checks.py
 ```
 **Status:** M2 - schema and load complete
+
+## Data Quality
+
+Profiling our M2 database (`data/aviation.db`) across the six required data quality families revealed that 96.58% (`820 / 849`) of surface flight records (`on_ground = 1`) omit barometric altitude due to Mode-S surface squitter behaviour (MAR), alongside 184 unreported callsigns (MNAR) and 3 airborne altitude dropouts (MCAR). We further identified 37 negative airborne altitude readings caused by high-pressure QNE offsets, 3 impossible supersonic velocity spikes (up to `2,160.22 m/s`), 13 cross-field contradictions where aircraft cruising above 500 m report speeds below stall limits (`< 15 m/s`), 5 sentinel callsigns (`00000000`, `0000000`, `UNIDENT`, `TEST`), 303 non-ASCII or verbose UN country records, and 5 confirmed transponder identity collisions. To resolve these anomalies without modifying the M2 tables, deleting rows, or imputing missing values, we built a `STRICT` cleaned layer (`aircraft_clean`, `flight_state_clean`, `weather_reading_clean`), version-controlled mapping CSVs (`data/mappings/`), and analytical views (`flight_state_resolved`, `weather_reading_resolved`) that preserve `<col>_raw`, `<col>`, and `<col>_flag` for every cleanable column. Full profiling evidence, missingness mechanisms, threshold justifications, and validation proofs are detailed in [`docs/cleaning_report.md`](docs/cleaning_report.md) and [`notebooks/m3_profile.ipynb`](notebooks/m3_profile.ipynb).
+
+### How to Build, Clean, and Validate from a Fresh Clone
+With landed raw data in `data/raw/`, run the following commands from the repository root to build the M2 database, construct the M3 cleaned layer, and execute the data quality validation suite:
+
+```bash
+python src/load.py
+python src/clean.py
+python src/validate.py
+```
+
+**Status:** M3 - cleaned layer and quality report complete
