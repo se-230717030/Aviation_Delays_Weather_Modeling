@@ -211,3 +211,23 @@ python src/validate.py
 ```
 
 **Status:** M3 - cleaned layer and quality report complete
+
+## Exploratory Data Analysis (M4)
+
+![Headline Figure: Altitude vs. Velocity](figures/fig5_altitude_velocity_relationship.png)
+
+In our exploratory analysis, we investigated how flight speeds and altitudes compare across national fleets and the underlying physical drivers of these metrics. Our primary *exploratory* finding reveals that the strong global correlation ($r = 0.90$) between barometric altitude and ground speed is entirely an artifact of the terminal climb phase; this relationship completely vanishes ($r = -0.01$) once aircraft reach the high-cruise stratosphere. Furthermore, we *confirmed* that country-level speed and altitude rankings are heavily distorted by time-zone-driven flight phase mixtures (Simpson's Paradox) within our single global snapshot. For the complete distribution analysis, bootstrap confidence intervals, and limitations, please see our full **[Exploratory Data Analysis Report](docs/eda_report.md)**.
+
+### How to Reproduce
+
+To build the database, generate the cleaned layer, and run the complete exploratory analysis (including generating all figures) from a fresh clone with landed raw data, execute the following commands in the repository root:
+
+```bash
+python src/load.py
+python src/clean.py
+python src/validate.py
+jupyter nbconvert --to notebook --execute --inplace notebooks/m4_eda.ipynb
+```
+
+
+**Status:** M4 - Exploratory analysis complete
