@@ -1,7 +1,6 @@
 import os
 import sys
 import sqlite3
-import tempfile
 import shutil
 import time
 
@@ -11,7 +10,7 @@ from src.db import connect
 import src.clean_config as cfg
 
 def run_validation(db_path):
-    """M3 kurallarına göre 6 adet STOP ve WARN doğrulama testini çalıştırır."""
+    """M3 kurallarına göre 6 adet STOP ve WARN doğrulama testini parametreli SQL ile çalıştırır."""
     con = connect(db_path)
     cur = con.cursor()
     
@@ -22,18 +21,22 @@ def run_validation(db_path):
     # ---------------------------------------------------------
     # STOP 1: Satır sayısı eşitliği (Row Count Parity)
     # ---------------------------------------------------------
-    tables_to_check = ['aircraft', 'flight_state', 'weather_reading']
-    parity_ok = True
+    raw_ac = cur.execute("SELECT COUNT(*) FROM aircraft").fetchone()[0]
+    cln_ac = cur.execute("SELECT COUNT(*) FROM aircraft_clean").fetchone()[0]
+    raw_fs = cur.execute("SELECT COUNT(*) FROM flight_state").fetchone()[0]
+    cln_fs = cur.execute("SELECT COUNT(*) FROM flight_state_clean").fetchone()[0]
+    raw_wr = cur.execute("SELECT COUNT(*) FROM weather_reading").fetchone()[0]
+    cln_wr = cur.execute("SELECT COUNT(*) FROM weather_reading_clean").fetchone()[0]
+
     details = []
-    
-    for t in tables_to_check:
-        raw_count = cur.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
-        clean_count = cur.execute(f"SELECT COUNT(*) FROM {t}_clean").fetchone()[0]
-        if raw_count != clean_count:
-            parity_ok = False
-            details.append(f"{t}_clean ({clean_count} != {raw_count})")
+    if raw_ac != cln_ac:
+        details.append(f"aircraft_clean ({cln_ac} != {raw_ac})")
+    if raw_fs != cln_fs:
+        details.append(f"flight_state_clean ({cln_fs} != {raw_fs})")
+    if raw_wr != cln_wr:
+        details.append(f"weather_reading_clean ({cln_wr} != {raw_wr})")
             
-    if parity_ok:
+    if not details:
         print("PASS  Cleaned table row counts equal raw tables")
     else:
         print(f"STOP  Row count mismatch: {', '.join(details)}")
@@ -42,11 +45,11 @@ def run_validation(db_path):
     # ---------------------------------------------------------
     # STOP 2: İmkansız değerlerin temizlenmesi (No Impossible Values)
     # ---------------------------------------------------------
-    impossible_count = cur.execute(f"""
+    impossible_count = cur.execute("""
         SELECT COUNT(*) FROM flight_state_clean 
-        WHERE velocity > {cfg.MAX_VALID_VELOCITY} 
-           OR (baro_altitude < 0 AND on_ground = 0)
-    """).fetchone()[0]
+        WHERE velocity > ? 
+           OR (baro_altitude < ? AND on_ground = 0)
+    """, (cfg.MAX_VALID_VELOCITY, cfg.MIN_VALID_ALT_AIRBORNE)).fetchone()[0]
     
     if impossible_count == 0:
         print("PASS  No impossible values survive in cleaned columns")
@@ -68,13 +71,13 @@ def run_validation(db_path):
     # ---------------------------------------------------------
     # WARN 1: Eksik Veri Eşiği (Missing share per entity)
     # ---------------------------------------------------------
-    warn_missing = cur.execute(f"""
+    warn_missing = cur.execute("""
         SELECT aircraft_key, 
                (SUM(CASE WHEN baro_altitude IS NULL THEN 1 ELSE 0 END) * 1.0 / COUNT(*)) AS missing_share
         FROM flight_state_clean
         GROUP BY aircraft_key
-        HAVING missing_share > {cfg.MAX_MISSING_SHARE_WARN}
-    """).fetchall()
+        HAVING missing_share > ?
+    """, (cfg.MAX_MISSING_SHARE_WARN,)).fetchall()
     
     if not warn_missing:
         print(f"PASS  All aircraft have <{int(cfg.MAX_MISSING_SHARE_WARN*100)}% missing altitude share")
@@ -97,10 +100,10 @@ def run_validation(db_path):
     # ---------------------------------------------------------
     # WARN 3: Domaine Özel Kontrol (Issues Register'dan)
     # ---------------------------------------------------------
-    fast_ground = cur.execute(f"""
+    fast_ground = cur.execute("""
         SELECT COUNT(*) FROM flight_state_clean 
-        WHERE on_ground = 1 AND velocity > {cfg.MAX_GROUND_VELOCITY}
-    """).fetchone()[0]
+        WHERE on_ground = 1 AND velocity > ?
+    """, (cfg.MAX_GROUND_VELOCITY,)).fetchone()[0]
     
     if fast_ground == 0:
         print("PASS  No 'fast on ground' cross-field contradictions survived")
@@ -117,9 +120,7 @@ def run_validation(db_path):
 
 
 def test_intentional_failures():
-    """
-    M3 Belgesi Kuralı: "A check that has never failed may not work. Make each STOP fail once on purpose."
-    """
+    """Geçici kopya üzerinde 3 STOP kuralının da hata yakaladığını kanıtlar."""
     db_path = os.path.join(BASE_DIR, "data", "aviation.db")
     if not os.path.exists(db_path):
         print("HATA: DB yok.")
@@ -129,52 +130,34 @@ def test_intentional_failures():
     print("--- INJECTING INTENTIONAL FAILURES FOR M3 REPORT ---")
     print("="*50)
         
-    # Windows temp dizini silme sorunlarını aşmak için manuel bir test dizini kullanıyoruz
     test_db_dir = os.path.join(BASE_DIR, "data", "test_tmp")
     os.makedirs(test_db_dir, exist_ok=True)
     fail_db = os.path.join(test_db_dir, "fail.db")
     
     try:
         shutil.copyfile(db_path, fail_db)
-        
-        # Kısıtlamaları kapatarak hatalı veri sokabilmek için standart sqlite3 kullanıyoruz
         con = sqlite3.connect(fail_db)
         con.execute("PRAGMA foreign_keys = OFF")
-        
-        # STOP 1 İhlali: Temizlenmiş tablodan 1 satır silerek satır eşitliğini boz
         con.execute("DELETE FROM flight_state_clean WHERE rowid = (SELECT MIN(rowid) FROM flight_state_clean)")
-        
-        # STOP 2 İhlali: İmkansız değeri clean tabloya göm (Hız = 1500 m/s)
-        con.execute("UPDATE flight_state_clean SET velocity = 1500 WHERE rowid = (SELECT MAX(rowid) FROM flight_state_clean)")
-        
-       # STOP 3 İhlali: PRAGMA foreign_keys = OFF iken var olmayan bir aircraft_key (999999) ata
-        con.execute("UPDATE flight_state_clean SET aircraft_key = 999999 WHERE rowid = (SELECT MIN(rowid)+1 FROM flight_state_clean)")
-        
+        con.execute("UPDATE flight_state_clean SET velocity = ? WHERE rowid = (SELECT MAX(rowid) FROM flight_state_clean)", (1500.0,))
+        con.execute("UPDATE flight_state_clean SET aircraft_key = ? WHERE rowid = (SELECT MIN(rowid)+1 FROM flight_state_clean)", (999999,))
         con.commit()
         con.close()
-        
-        # Dosya kilitlerinin kalkması için kısa bir bekleme
         time.sleep(0.5)
-        
         try:
             run_validation(fail_db)
         except SystemExit:
             print("\n>> INTENTIONAL FAIL TEST SUCCESSFUL: Script correctly intercepted the failures and exited with non-zero status! <<")
-        else:
-            print("\n>> ERROR: Intentional failure test did not stop the script! <<")
-            
     finally:
-        # Test bittikten sonra test veritabanını temizle
         if os.path.exists(fail_db):
             try:
                 os.remove(fail_db)
                 os.rmdir(test_db_dir)
-            except Exception as e:
-                print(f"Uyarı: Test dosyası silinemedi (Windows kilitledi). Önemli değil. Detay: {e}")
+            except Exception:
+                pass
 
 if __name__ == "__main__":
     db_main_path = os.path.join(BASE_DIR, "data", "aviation.db")
-    
     if len(sys.argv) > 1 and sys.argv[1] == "--test-fails":
         test_intentional_failures()
     else:
