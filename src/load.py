@@ -155,6 +155,9 @@ def load_openmeteo_data(con, summary):
 
         lat = data.get("latitude")
         lon = data.get("longitude")
+        # Open-Meteo model grid kaymasını (41.25 vs 41.258) tek mantıksal istasyonda birleştir (0.25° grid)
+        lat = round(float(lat) * 4) / 4
+        lon = round(float(lon) * 4) / 4
         if lat is None or lon is None:
             quarantine_record(con, "location", json.dumps(data), "Eksik lat/lon", retrieved_at_iso, summary)
             continue

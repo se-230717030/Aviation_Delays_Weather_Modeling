@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 import requests
 from dotenv import load_dotenv
 
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(_file_), '..'))
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, BASE_DIR)
 
 from src.db import parse_run_time
@@ -20,8 +20,8 @@ OPENSKY_URL = "https://opensky-network.org/api/states/all"
 OPENMETEO_URL = "https://api.open-meteo.com/v1/forecast"
 
 # İstanbul Havalimanı (LTFM) koordinatları
-IST_LAT = 41.2753
-IST_LON = 28.7519
+IST_LAT = 41.25
+IST_LON = 28.75
 
 REQUEST_TIMEOUT_SEC = 25          # Tek bir HTTP isteği için üst sınır
 MAX_RETRIES = 3                   # Ağ hatalarında maksimum deneme sayısı
@@ -195,5 +195,5 @@ def main():
     print("STATUS: COMPLETE")
 
 
-if _name_ == "_main_":
+if __name__ == "__main__":
     main()
