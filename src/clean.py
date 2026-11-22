@@ -1,12 +1,14 @@
 import os
 import sys
 import csv
+import time
+import argparse
 import statistics
 
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.append(BASE_DIR)
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(_file_), '..'))
+sys.path.insert(0, BASE_DIR)
 
-from src.db import connect
+from src.db import connect, parse_run_time
 import src.clean_config as cfg
 
 DB_PATH = os.path.join(BASE_DIR, "data", "aviation.db")
@@ -478,28 +480,46 @@ def print_clean_summary(ac_stats, fs_stats, wr_stats, map_info):
     print("STATUS: COMPLETE")
 
 
-def run_clean():
-    if not os.path.exists(DB_PATH):
-        print("HATA: Veritabanı bulunamadı. Önce 'python src/load.py' çalıştırın.", file=sys.stderr)
+def run_clean(run_time_str=None):
+    t0 = time.perf_counter()
+    _, run_iso = parse_run_time(run_time_str)
+
+    # Opsiyonel Failure Drill Hook'u (varsayılan: kapalı)
+    if os.getenv("PIPELINE_DRILL_FAIL_STEP") == "clean":
+        print("ERROR [clean.py]: Kasıtlı Failure Drill tetiklendi (PIPELINE_DRILL_FAIL_STEP=clean).", file=sys.stderr)
         sys.exit(1)
 
-    con = connect(DB_PATH)
+    try:
+        con = connect(DB_PATH, allow_create=False)
+    except FileNotFoundError as exc:
+        print(f"HATA: {exc}", file=sys.stderr)
+        sys.exit(1)
+
     try:
         init_clean_schema(con)
-        # Bütün temizleme işlemi tek bir atomik transaction (with con:) içinde gerçekleşir
+        # Full rebuild: Bütün temizleme işlemi tek bir atomik transaction içinde yapılır
         with con:
             map_info = load_mappings(con)
             ac_stats = clean_aircraft_table(con, map_info)
             fs_stats = clean_flight_state_table(con)
             wr_stats = clean_weather_reading_table(con)
-    except Exception as e:
-        print(f"CLEAN FAILED (ATOMIC ROLLBACK): {e}", file=sys.stderr)
+    except Exception as exc:
+        print(f"CLEAN FAILED (ATOMIC ROLLBACK): {exc}", file=sys.stderr)
         con.close()
         sys.exit(1)
 
     con.close()
+    elapsed = time.perf_counter() - t0
+    print(f"run_time: {run_iso} (elapsed: {elapsed:.2f}s)")
     print_clean_summary(ac_stats, fs_stats, wr_stats, map_info)
 
 
+def main():
+    parser = argparse.ArgumentParser(description="M3/M5 Full-rebuild atomic cleaner.")
+    parser.add_argument("--run-time", dest="run_time", default=None, help="Pipeline clock (ISO 8601 UTC)")
+    args = parser.parse_args()
+    run_clean(args.run_time)
+
+
 if __name__ == "__main__":
-    run_clean()
+    main()
