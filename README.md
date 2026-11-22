@@ -231,3 +231,19 @@ jupyter nbconvert --to notebook --execute --inplace notebooks/m4_eda.ipynb
 
 
 **Status:** M4 - Exploratory analysis complete
+
+## Pipeline
+
+```bash
+python src/run_pipeline.py                # fetch, load, clean, validate
+python src/run_pipeline.py --skip-ingest  # rebuild from landed raw data
+python src/monitor.py                     # is it healthy?
+```
+
+### Schedule
+The pipeline runs automatically every **6 hours** (4 times per day) via Windows Task Scheduler, defined in [`ops/AviationPipelineRun.xml`](ops/AviationPipelineRun.xml) alongside the launcher scripts [`ops/run_pipeline.bat`](ops/run_pipeline.bat) and [`ops/run_monitor.bat`](ops/run_monitor.bat).
+
+### Failure Handling
+`src/run_pipeline.py` executes each stage as a separate subprocess and halts immediately on the first non-zero exit code (or exit code `124` on timeout), ensuring downstream stages never run on stale or partial data while logging every executed step in `data/pipeline_log.db`. Overlapping executions are blocked with an atomic lock file (`data/pipeline.lock`, exit code `75`), and atomic transactions leave `data/aviation.db` unchanged if a load or clean step fails. Outside the pipeline, `src/monitor.py` inspects the database and run log read-only and exits non-zero with `ALARM` on stalled runs, gaps over 14 hours, missing hourly weather slots, or stale feeds; full design decisions, operations, and failure-drill evidence are documented in [`docs/pipeline.md`](docs/pipeline.md).
+
+**Status:** M5 — pipeline running on a schedule since 2026-11-22.
