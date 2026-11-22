@@ -7,6 +7,7 @@ import argparse
 from datetime import datetime, timezone
 import requests
 from dotenv import load_dotenv
+from scipy import stats
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, BASE_DIR)
@@ -124,7 +125,7 @@ def ingest_opensky(run_dt, file_stamp):
     with open(tmp_path, "w", encoding="utf-8") as f:
         json.dump(data, f)
     os.replace(tmp_path, out_path)
-    return len(states), out_path
+    return len(stats), out_path
 
 
 def ingest_openmeteo(run_dt, file_stamp):
