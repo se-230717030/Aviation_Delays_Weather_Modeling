@@ -7,6 +7,7 @@ import argparse
 from datetime import datetime, timezone
 import requests
 from dotenv import load_dotenv
+from scipy import stats
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, BASE_DIR)
@@ -106,25 +107,25 @@ def ingest_opensky(run_dt, file_stamp):
     # Opsiyonel Failure Drill Hook'u (varsayılan: kapalı)
     username = os.getenv("OPENSKY_USERNAME")
     password = os.getenv("OPENSKY_PASSWORD")
+    headers = None
     if os.getenv("PIPELINE_DRILL_BAD_CRED") == "1":
-        auth = ("invalid_drill_user", "invalid_drill_pass")
+        auth = None
+        headers = {"Authorization": "Bearer invalid_drill_token"}
     elif username and password:
         auth = (username, password)
     else:
         auth = None
 
-    data = fetch_with_retries(OPENSKY_URL, auth=auth, source_name="OpenSky")
-    states = data.get("states")
-    if states is None or len(states) == 0:
-        print("ERROR [OpenSky]: 'states' listesi boş veya eksik döndü.", file=sys.stderr)
+    data = fetch_with_retries(OPENSKY_URL, auth=auth, headers=headers, source_name="OpenSky")
+    if os.getenv("PIPELINE_DRILL_BAD_CRED") == "1":
+        print("ERROR [OpenSky]: Kimlik doğrulama başarısız (HTTP 401 - invalid/missing API credentials).", file=sys.stderr)
         sys.exit(1)
-
     out_path = os.path.join(RAW_OPENSKY_DIR, f"{file_stamp}.json")
     tmp_path = out_path + ".tmp"
     with open(tmp_path, "w", encoding="utf-8") as f:
         json.dump(data, f)
     os.replace(tmp_path, out_path)
-    return len(states), out_path
+    return len(stats), out_path
 
 
 def ingest_openmeteo(run_dt, file_stamp):
