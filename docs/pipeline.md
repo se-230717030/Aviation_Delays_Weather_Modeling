@@ -78,6 +78,15 @@ WHERE observed_at <= retrieved_at;
 ---
 
 ## 3. Operations
+- **Schedule:**
+  The pipeline is scheduled on Windows via **Task Scheduler** using the committed task definition [`ops/AviationPipelineRun.xml`](../ops/AviationPipelineRun.xml) and launcher script [`ops/run_pipeline.bat`](../ops/run_pipeline.bat). To register or recreate the schedule on a Windows host:
+  1. Adjust the repository path and Python executable path in `ops/run_pipeline.bat`, `ops/run_monitor.bat`, and `ops/AviationPipelineRun.xml` if installing on a different machine.
+  2. Import the task via **Task Scheduler → Import Task...** (selecting `ops/AviationPipelineRun.xml`) or register it from PowerShell/CMD:
+     ```powershell
+     schtasks /Create /TN "AviationPipelineRun" /XML ops\AviationPipelineRun.xml
+     ```
+  3. Confirm the task settings: trigger repeats every **6 hours (`PT6H`)**, **Run whether user is logged on or not** (`LogonType: Password`) is enabled, **Start in** (`WorkingDirectory`) points to the repository root, and **If the task is already running** is set to **Do not start a new instance** (`IgnoreNew`).
+  4. Register [`ops/run_monitor.bat`](../ops/run_monitor.bat) as a separate scheduled task running ~15 minutes after each pipeline trigger so `src/monitor.py` acts as an independent dead-man's switch if the pipeline task fails to launch.
 
 - **Run by hand:**
   ```bash
