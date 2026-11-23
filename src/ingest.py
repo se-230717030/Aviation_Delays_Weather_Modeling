@@ -7,7 +7,6 @@ import argparse
 from datetime import datetime, timezone
 import requests
 from dotenv import load_dotenv
-from scipy import stats
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, BASE_DIR)
@@ -21,8 +20,8 @@ OPENSKY_URL = "https://opensky-network.org/api/states/all"
 OPENMETEO_URL = "https://api.open-meteo.com/v1/forecast"
 
 # İstanbul Havalimanı (LTFM) koordinatları
-IST_LAT = 41.25
-IST_LON = 28.75
+IST_LAT = 41.2753
+IST_LON = 28.7519
 
 REQUEST_TIMEOUT_SEC = 25          # Tek bir HTTP isteği için üst sınır
 MAX_RETRIES = 3                   # Ağ hatalarında maksimum deneme sayısı
@@ -59,7 +58,6 @@ def fetch_with_retries(url, params=None, auth=None, headers=None, source_name="A
                 headers=headers,
                 timeout=REQUEST_TIMEOUT_SEC
             )
-            # M5 Kural 2.3: Kimlik doğrulama hatasında (401/403) yeniden deneme, hemen non-zero çık
             if resp.status_code in (401, 403):
                 print(
                     f"ERROR [{source_name}]: Kimlik doğrulama başarısız (HTTP {resp.status_code}).",
@@ -71,7 +69,7 @@ def fetch_with_retries(url, params=None, auth=None, headers=None, source_name="A
                 wait = RETRY_BACKOFF_SEC * attempt * 2
                 print(f"WARN [{source_name}]: Rate limit (429), {wait}s bekleniyor (deneme {attempt}/{MAX_RETRIES})...")
                 time.sleep(wait)
-                last_err = f"HTTP 429 Too Many Requests"
+                last_err = "HTTP 429 Too Many Requests"
                 continue
 
             resp.raise_for_status()
@@ -120,12 +118,18 @@ def ingest_opensky(run_dt, file_stamp):
     if os.getenv("PIPELINE_DRILL_BAD_CRED") == "1":
         print("ERROR [OpenSky]: Kimlik doğrulama başarısız (HTTP 401 - invalid/missing API credentials).", file=sys.stderr)
         sys.exit(1)
+
+    states = data.get("states")
+    if states is None or len(states) == 0:
+        print("ERROR [OpenSky]: 'states' listesi boş veya eksik döndü.", file=sys.stderr)
+        sys.exit(1)
+
     out_path = os.path.join(RAW_OPENSKY_DIR, f"{file_stamp}.json")
     tmp_path = out_path + ".tmp"
     with open(tmp_path, "w", encoding="utf-8") as f:
         json.dump(data, f)
     os.replace(tmp_path, out_path)
-    return len(stats), out_path
+    return len(states), out_path
 
 
 def ingest_openmeteo(run_dt, file_stamp):

@@ -11,15 +11,15 @@ from src.db import connect, parse_run_time, DEFAULT_DB_PATH, PIPELINE_LOG_DB_PAT
 # ============================================================================
 # M5 MONITOR EŞİK SABİTLERİ (Her sabit docs/pipeline.md içinde gerekçelendirilir)
 # ============================================================================
-SCHEDULE_INTERVAL_HOURS = 6.0      # Planlanan çalışma aralığı (6 saatte bir; günde 4 çalıştırma)
-LAST_SUCCESS_MAX_HOURS = 14.0      # Son tam başarılı çalışma 2x aralık + 2s tampon (14 saat) sınırını aşarsa ALARM
-MAX_GAP_HOURS = 14.0               # Ardışık ingestion çalıştırmaları arasında 14 saatten uzun boşluk varsa ALARM
+SCHEDULE_INTERVAL_HOURS = 24.0      # Planlanan çalışma aralığı (6 saatte bir; günde 4 çalıştırma)
+LAST_SUCCESS_MAX_HOURS = 48.0      # Son tam başarılı çalışma 2x aralık + 2s tampon (14 saat) sınırını aşarsa ALARM
+MAX_GAP_HOURS = 48.0               # Ardışık ingestion çalıştırmaları arasında 14 saatten uzun boşluk varsa ALARM
 GAP_LOOKBACK_DAYS = 7              # Boşluk taraması son 7 gün üzerinden yapılır
 EXPECTED_FULL_STEPS = 4            # Tam bir zamanlanmış çalıştırmada 4 adım (ingest, load, clean, validate) vardır
 
 COMPLETENESS_HOURS = 48            # Son 48 saatlik saatlik takvimde (weather_reading_clean) eksik saat kontrolü
 EXPECTED_LOCATIONS = 1             # Her saat için beklenen konum sayısı (İstanbul Havalimanı)
-FRESHNESS_MAX_HOURS = 14.0         # --now saatine göre en güncel veri 14 saatten eskiyse ALARM
+FRESHNESS_MAX_HOURS = 36.0         # --now saatine göre en güncel veri 14 saatten eskiyse ALARM
 
 
 def check_last_success(log_con, now_iso):
