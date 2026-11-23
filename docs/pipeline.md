@@ -245,14 +245,31 @@ ORDER BY occurrences DESC;
 ```
 
 ### Missed runs
-- **What we did:** `[TODO: Record the exact timestamps of at least 2 consecutive missed 6-hour runs (>14h outage, e.g., disabling \AviationPipelineRun or shutting down DESKTOP-IU6TDC9).]`
-- **The `ALARM` (`python src/monitor.py`):**
+- **What we did:** We deliberately allowed an outage of over 20 hours (missing 3 consecutive 6-hour scheduled triggers between `2026-11-22T20:29:43Z` and `2026-11-23T17:05:03Z`, exceeding `monitor.py`'s `14.0h` threshold).
+- **The `ALARM` before recovery (`python src/monitor.py`):**
   ```text
-  [TODO: Paste the python src/monitor.py output showing ALARM on gaps / last_success / freshness / completeness during the outage.]
+  ALARM last_success   last full success 20.6h ago (2026-11-22T20:29:43Z) > 14.0h limit
+  ALARM gaps           1 gap(s) > 14.0h in last 7d (latest: 20.3h between 2026-11-22T20:46:28Z and 2026-11-23T17:05:03Z)
+  PASS  completeness   48/48 expected hours present (2026-11-21T18:00:00Z .. 2026-11-23T17:00:00Z)
+  ALARM freshness      stale relative to cutoff 2026-11-23T03:05:52Z: flight_state latest=2026-11-22T20:29:53Z; weather_reading stale: loc=1(2026-11-22T20:29:43Z)
   ```
-- **Completeness before and after recovery:**
+- **Completeness and freshness before and after recovery:**
+  Before the recovery run, `weather_reading_clean` held `504` hourly rows last refreshed on `2026-11-22T20:29:43Z` (`48/48` calendar hours existed from the prior 7-day forecast horizon, but all observations were stale relative to `--now`):
   ```text
-  [TODO: Paste the completeness query output before and after the next scheduled run, proving Open-Meteo healed all missed hourly slots automatically via past_days = gap_days + 1 and OpenSky resumed live snapshots.]
+  BEFORE_MAX_RETRIEVED: ('2026-11-22T20:29:43Z', 504)
+  ```
+  The recovery run (`python src/run_pipeline.py`, `run_id=09de1b78`, `run_time=2026-11-23T17:24:12Z`) fetched `11,879` live OpenSky states and `192` Open-Meteo hourly rows (`past_days=1` overlap), loaded `20` raw files (`+45,543` net new flight states, `+24` net new weather hours, `elapsed_sec: 2.05s`), rebuilt all cleaned tables (`2.15s`), and passed all `7` `validate.py` checks (`VALIDATION SUCCESS: Pipeline is healthy.`).
+
+  After recovery, `weather_reading_clean` expanded to `528` rows with updated `retrieved_at` across the overlapping 24-hour window, and `monitor.py` returned `PASS` on `last_success`, `completeness`, and `freshness` while continuing to report `ALARM` on the historical `20.3h` gap inside the 7-day lookback window (confirming `gaps` also raises `ALARM` with `Exit code: 1`):
+  ```text
+  AFTER_MAX_RETRIEVED: ('2026-11-23T17:24:12Z', 528)
+  ```
+  ```text
+  PASS  last_success   last full success 0.0h ago (2026-11-23T17:24:12Z)
+  ALARM gaps           1 gap(s) > 14.0h in last 7d (latest: 20.3h between 2026-11-22T20:46:28Z and 2026-11-23T17:05:03Z)
+  PASS  completeness   48/48 expected hours present (2026-11-21T18:00:00Z .. 2026-11-23T17:00:00Z)
+  PASS  freshness      both feeds fresh within 14.0h (fs=2026-11-23T17:24:11Z, wr=2026-11-23T17:24:12Z)
+  Exit code: 1
   ```
 
 ### Drills
@@ -266,7 +283,7 @@ All drill hooks (`PIPELINE_DRILL_BAD_CRED`, `PIPELINE_DRILL_FAIL_STEP`, `PIPELIN
 
 4. **Two runs at once:** In Terminal 1, launched `python src/run_pipeline.py` with `PIPELINE_DRILL_SLEEP_SEC=15` (`run_id=8f4cce4e`, `run_time=2026-11-22T20:29:43Z`), holding `data/pipeline.lock`. While Terminal 1 was active, Terminal 2 ran `python src/run_pipeline.py` and exited immediately with `PIPELINE ALREADY RUNNING: Lock file exists at C:\Users\Ali\Desktop\Aviation_Delays_Weather_Modeling\data\pipeline.lock. Exiting with code 75.` (shell `Exit code: 75`), executing zero steps and writing zero rows to `pipeline_run`. Terminal 1 subsequently completed all 4 steps cleanly (`11,536` OpenSky states, `192` Open-Meteo rows, `+11,383` net new flight states, `exit_code=0`).
 
-5. **Missed runs:** `[TODO: Reference the deliberate 2+ missed-run outage documented in "Missed runs" above, showing monitor.py ALARM on gaps and Open-Meteo self-healing recovery.]`
+5. **Missed runs:** Deliberately skipped 3 consecutive 6-hour scheduled triggers (~20.3h outage between `2026-11-22T20:46:28Z` and `2026-11-23T17:05:03Z`; detailed in *Missed runs* above). `src/monitor.py` raised `ALARM` on `last_success` (`20.6h > 14.0h`), `gaps` (`20.3h > 14.0h`), and `freshness`. Subsequent recovery run `run_id=09de1b78` (`2026-11-23T17:24:12Z`) healed Open-Meteo via `past_days=1` (`weather_reading_clean` updated from `504` rows at `2026-11-22T20:29:43Z` to `528` rows at `2026-11-23T17:24:12Z`, `48/48` hours complete) and resumed live OpenSky snapshots (`11,879` states), restoring `PASS` on `last_success` and `freshness` while retaining the `gaps` `ALARM` (`Exit code: 1`) across the 7-day audit window.
 
 6. **An old file re-loaded:** Queried the newest `weather_reading` record in `data/aviation.db`, re-ran an offline full reload across all `15` landed raw files (including older snapshots) via `python src/run_pipeline.py --skip-ingest` (`run_id=ffa96158`, `run_time=2026-11-22T20:32:55Z`, `rows_added: 0`, `1.00s`), and re-queried the same record:
    ```text
